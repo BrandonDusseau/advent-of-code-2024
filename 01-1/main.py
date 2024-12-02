@@ -12,7 +12,7 @@ for line in lines:
     if strippedLine == "":
         continue
 
-    match = re.match(r"^(\d+)\s+(\d+)", line)
+    match = re.match(r"^(\d+)\s+(\d+)", strippedLine)
     if match is None:
         continue
 

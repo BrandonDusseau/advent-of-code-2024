@@ -72,11 +72,6 @@ for update in updates:
 
     if not is_valid:
         fixed_update = fix_update(update, result, later_pages)
-        print("  Double checking...")
-        double_check = check_update(fixed_update, later_pages)
-        if len(double_check) != 0:
-            pprint(later_pages)
-            break
         middle_page_number = int(fixed_update[(len(fixed_update) // 2)])
         print(f"  Middle page is {middle_page_number}")
         middle_page_sum += middle_page_number

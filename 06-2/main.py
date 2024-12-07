@@ -71,16 +71,14 @@ def move_next(obstructions, max_x, max_y, current_location, current_direction):
     return (next_location, next_direction, encountered_obstruction)
 
 
-def simulate_obstruction(start_location, start_direction, locations_visited, obstructions, max_x, max_y, potential_obstruction, lines, should_visualize):
-    #print(f"Placing obstruction at ({potential_obstruction[0]}, {potential_obstruction[1]})")
+def simulate_obstruction(start_location, start_direction, obstructions, max_x, max_y, potential_obstruction, lines, should_visualize):
     mock_obstructions = obstructions.copy()
     mock_obstructions.add(potential_obstruction)
     next_location = start_location
     next_direction = start_direction
 
     # Continue until the guard either encounters a position + direction they've already been in or until they exit.
-    seen_locations = set(locations_visited)
-    seen_locations.add((start_location, start_direction))
+    seen_locations = {(start_location, start_direction)}
     while next_location is not None:
         prev_location = next_location
         (next_location, next_direction, encountered_obstruction) = move_next(mock_obstructions, max_x, max_y, next_location, next_direction)
@@ -91,14 +89,11 @@ def simulate_obstruction(start_location, start_direction, locations_visited, obs
             seen_locations.add((prev_location, next_direction))
 
         if loc_info in seen_locations:
-            #print("Found cycle!")
-            #print()
             if should_visualize:
                 visualize(potential_obstruction, lines, max_x, max_y, seen_locations)
             return True
 
         if next_location is not None:
-            #print(f"Moving to ({next_location[0]}, {next_location[1]}) with direction {next_direction}")
             seen_locations.add(loc_info)
 
     return False
@@ -128,7 +123,6 @@ for row in range(0, len(lines)):
 locations_visited = [(start, 'n')] # (Location, direction after moving)
 current_location = start
 facing = 'n'
-loop_obstructions = set()
 while current_location is not None:
     (prev_location, prev_facing) = locations_visited[-1]
     (current_location, facing, encountered_obstruction) = move_next(obstructions, max_x, max_y, current_location, facing)
@@ -139,19 +133,11 @@ while current_location is not None:
     if current_location is not None:
         locations_visited.append((current_location, facing))
 
-    # Pretend there is an obstruction here and move starting from where we were before.
-    if encountered_obstruction is None and current_location != start and current_location is not None:
-        #print(f"Starting simulation at ({current_location[0]}, {current_location[1]}) with direction {facing}")
-        if simulate_obstruction(start, 'n', [], obstructions, max_x, max_y, current_location, lines, False):
-            loop_obstructions.add(current_location)
+loop_obstructions = set()
+for potential_obstruction in {x[0] for x in locations_visited}:
+    if simulate_obstruction(start, 'n', obstructions, max_x, max_y, potential_obstruction, lines, False):
+        loop_obstructions.add(potential_obstruction)
 
-        # Also run a simulation where the obstruction is placed after the guard moves away.
-        # (next_simulated_location, next_simulated_direction, encountered_obstruction_2) = move_next(obstructions, max_x, max_y, current_location, facing)
-        # if encountered_obstruction_2 is None and next_simulated_direction != start and next_simulated_location is not None:
-        #     if simulate_obstruction(next_simulated_location, next_simulated_direction, locations_visited, obstructions, max_x, max_y, current_location, lines, False):
-        #         loop_obstructions.add(current_location)
-
-#pprint(loop_obstructions)
 print(len(loop_obstructions))
 
 

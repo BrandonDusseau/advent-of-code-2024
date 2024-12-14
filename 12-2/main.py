@@ -8,39 +8,13 @@ def is_point_in_region(plant, plots, row, col, max_row, max_col):
     return plots[row][col] == plant
 
 
-def get_next_point(direction, row, col, max_row, max_col):
-    if direction == 's':
-        point = (col, row + 1)
-    elif direction == 'n':
-        point = (col, row - 1)
-    elif direction == 'e':
-        point = (col + 1, row)
-    else:
-        point = (col - 1, row)
-
-    if point[1] < 0 or point[0] < 0 or point[1] > max_row or point[0] > max_col:
-        return None
-
-    return point
-
-
-def get_next_direction(direction):
-    if direction == 's':
-        return 'e'
-    elif direction == 'e':
-        return 'n'
-    elif direction == 'n':
-        return 'w'
-    else:
-        return 's'
-
-
 def explore_region(discovered, plots, row, col, max_row, max_col):
     if (col, row) in discovered:
-        return set()
+        return (set(), [])
 
     discovered.add((col, row))
     adjacent_plots_in_region = []
+    walls = []
     plant = plots[row][col]
 
     points_to_test = [
@@ -52,13 +26,55 @@ def explore_region(discovered, plots, row, col, max_row, max_col):
     for test_col, test_row in points_to_test:
         if is_point_in_region(plant, plots, test_row, test_col, max_row, max_col):
             adjacent_plots_in_region.append((test_col, test_row))
+        else:
+            walls.append((test_col, test_row))
 
     plots_in_region = {(col, row)}
     for plot_col, plot_row in adjacent_plots_in_region:
-        found_plots = explore_region(discovered, plots, plot_row, plot_col, max_row, max_col)
+        (found_plots, found_walls) = explore_region(discovered, plots, plot_row, plot_col, max_row, max_col)
         plots_in_region = plots_in_region.union(found_plots)
+        walls += found_walls
 
-    return plots_in_region
+    return (plots_in_region, sorted(walls))
+
+
+def count_sides(walls, top_left_point):
+    sides = 0
+    processed_walls = set()
+    walls_to_process = walls.copy()
+    pprint(walls)
+
+    current_point = (top_left_point[0], top_left_point[1] - 1)
+    while current_point is not None:
+        col, row = current_point
+        print(f"Processing point ({col}, {row})")
+        processed_walls.add(current_point)
+        walls_to_process.remove(current_point)
+
+        points_to_test = [
+            (col - 1, row),
+            (col + 1, row),
+            (col, row - 1),
+            (col, row + 1)
+        ]
+
+        # Try moving to an adjacent wall.
+        next_point = None
+        for test_point in points_to_test:
+            if test_point in walls and test_point not in processed_walls:
+                print(f"  Found adjacent point at ({test_point[0]}, {test_point[1]})")
+                next_point = test_point
+                break
+
+        # If there are no adjacent points, pick the next wall that isn't already processed.
+        if next_point is None:
+            sides += 1
+            print(f"  Starting another wall.")
+            next_point = next(iter(walls_to_process)) if len(walls_to_process) > 0 else None
+
+        current_point = next_point
+
+    return sides
 
 
 with open(os.path.join(os.path.dirname(__file__), "input.txt")) as f:
@@ -82,25 +98,15 @@ for row in range(0, len(plots)):
             continue
         region = explore_region(set(), plots, row, col, max_row, max_col)
         regions[(col, row)] = region
-        points_assigned_regions = points_assigned_regions.union(region)
+        points_assigned_regions = points_assigned_regions.union(region[0])
 
 total_price = 0
-for top_left_point, region_points in regions.items():
-    sides = 1
-    direction = 's'
-    current_point = top_left_point
-    initial_point = True
-    while initial_point or current_point != top_left_point:
-        pprint(current_point)
-        initial_point = False
-        next_point = get_next_point(direction, current_point[1], current_point[0], max_row, max_col)
-        while next_point not in region_points:
-            sides += 1
-            direction = get_next_direction(direction)
-            next_point = get_next_point(direction, current_point[1], current_point[0], max_row, max_col)
-        current_point = next_point
-    print(sides)
+for top_left_point, region_data in regions.items():
+    region_points, region_walls = region_data
+    pprint(region_points)
+    total_sides = count_sides(region_walls, top_left_point)
+    print(total_sides)
     print()
-    total_price += len(region_points) * sides
+    total_price += len(region_points) * total_sides
 
 print(total_price)

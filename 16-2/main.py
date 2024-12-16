@@ -114,6 +114,14 @@ def a_star(start, goal, h, positions):
     return None
 
 
+def remove_neighbor(node, neighbor_to_remove):
+    for neighbor_direction, neighbor_node in node.neighbors.items():
+            if neighbor_node == neighbor_to_remove:
+                break
+    node.neighbors[neighbor_direction] = None
+    return neighbor_direction
+
+
 def score_path(path):
     current_point = path[0]
     current_direction = 'e'
@@ -123,9 +131,7 @@ def score_path(path):
     for point in path[1:]:
         for neighbor_direction, neighbor_node in current_point.neighbors.items():
             if neighbor_node == point:
-                # print(f"Next node is ({point.col}, {point.row}) in direction {neighbor_direction}")
                 turn_cost = get_direction_weight(current_direction, neighbor_direction)
-                # print(f"  Add 1 move and {turn_cost} turn penalty")
                 turn_penalty += turn_cost
                 move_cost += 1
                 current_point = point
@@ -172,9 +178,73 @@ for point, node in positions.items():
     if w in positions.keys():
         node.neighbors['w'] = positions[w]
 
-# for node in positions.values():
-#     print(f"{node.get_point_string()} - Neighbors: [{node.get_neighbors_string()}]")
-
 path = a_star(start, end, heuristic, positions)
-score = score_path(path)
-print(score)
+target_score = score_path(path)
+paths = [path]
+potential_kth_shortest_path = []
+
+next_path_score = target_score
+k = 1
+while next_path_score == target_score:
+    for i in range(0, len(paths[k - 1]) - 1):
+        spur_node = paths[k - 1][i]
+        root_path = paths[k - 1][0:i + 1]
+
+        removed_neighbors = []
+        for path in paths:
+            if root_path == path[0:i + 1]:
+                neighbor_direction_1 = remove_neighbor(path[i], path[i + 1])
+                removed_neighbors.append((path[i], path[i + 1], neighbor_direction_1))
+                neighbor_direction_2 = remove_neighbor(path[i + 1], path[i])
+                removed_neighbors.append((path[i + 1], path[i], neighbor_direction_2))
+
+        removed_nodes = []
+        for node in root_path:
+            if node == spur_node:
+                continue
+
+            # If we're deleting a node, delete all the edges to that node.
+            for neighbor_direction, neighbor_node in node.neighbors.items():
+                if neighbor_node is None:
+                    continue
+                removed_neighbors.append((node, neighbor_node, remove_neighbor(node, neighbor_node)))
+                removed_neighbors.append((neighbor_node, node, remove_neighbor(neighbor_node, node)))
+            del positions[(node.col, node.row)]
+            removed_nodes.append(node)
+
+        spur_path = a_star(spur_node, end, heuristic, positions)
+        if spur_path is not None:
+            total_path = root_path + spur_path
+
+            total_path_score = score_path(total_path)
+            path_data = (total_path, total_path_score)
+            if path_data not in potential_kth_shortest_path:
+                potential_kth_shortest_path.append(path_data)
+
+        for node in removed_nodes:
+            positions[(node.col, node.row)] = node
+        for source, dest, direction in removed_neighbors:
+            source.neighbors[direction] = dest
+
+    if len(potential_kth_shortest_path) == 0:
+        break
+
+    # sort by the score
+    sorted_potential_kth_shortest_path = sorted(potential_kth_shortest_path, key=lambda x: x[1])
+    next_shortest_path = sorted_potential_kth_shortest_path[0]
+    next_path_score = next_shortest_path[1]
+    if next_path_score == target_score:
+        paths.append(next_shortest_path[0])
+    potential_kth_shortest_path = sorted_potential_kth_shortest_path[1:]
+
+    k += 1
+
+seats = set()
+for path in paths:
+    seats = seats.union(set(path))
+
+pprint(paths)
+
+print(len(seats))
+
+

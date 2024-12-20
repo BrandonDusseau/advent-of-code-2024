@@ -122,7 +122,6 @@ for wall in walls:
     if len(adjacent_spaces) >= 2:
         cheats.add(wall)
 
-
 # visualize(spaces, walls, start, end, max_x, max_y)
 
 dist_from_start, prev_data = dijkstra(spaces, start)
@@ -166,5 +165,11 @@ for point in original_path:
         else:
             saved_times[max_diff_for_this_cheat] += 1
 
-pprint(saved_times)
-print(f"{saved_times.get(100, 0)} cheats save 100pS")
+# pprint(saved_times)
+
+total_at_least_hundred = 0
+for time_saved, count in saved_times.items():
+    if time_saved >= 100:
+        total_at_least_hundred += count
+
+print(f"{total_at_least_hundred} cheats save at least 100pS")

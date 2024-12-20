@@ -17,15 +17,12 @@ def design_is_possible(towels, design, recursion_level=0):
                 elif design_is_possible(towels, design[temp_end + 1:end + 1], recursion_level + 1):
                     # If the remaining design is possible, return true.
                     return True
-                elif temp_end == start:
-                    print(f"{'  ' * recursion_level}Recursion failed, and we're out of stripes - not possible to continue")
-                    return False
-            elif temp_end == start:
+            if temp_end == start:
                 # If the remaining design wasn't possible and there's only one stripe left, the design is not possible.
                 print(f"{'  ' * recursion_level}{design[start]} is NOT valid - Not possible to continue")
                 return False
-            else:
-                print(f"{'  ' * recursion_level}{design[start:temp_end + 1]} is NOT valid")
+
+            print(f"{'  ' * recursion_level}{design[start:temp_end + 1]} is NOT valid")
 
     return True
 

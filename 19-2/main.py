@@ -2,43 +2,45 @@ import os
 from pprint import pprint
 
 
-def design_is_possible(towels, design, progress, valid_combinations, memo, recursion_level=0):
-    print(f"{'  ' * recursion_level}Design {design}")
-    start = 0
-    end = len(design) - 1
+def get_possible_combinations(design, towels, memo, recursion_depth=0):
+    if design in memo:
+        # print(f"{' ' * recursion_depth}Design {design} is cached - returning results.")
+        return memo[design]
 
-    memo_key = design
+    if design == '':
+        # print(f"{' ' * recursion_depth}Got blank design, going back up.")
+        return 0
 
-    if memo_key in memo:
-        print(f"{'  ' * recursion_level}Design is cached")
-        return memo[memo_key]
+    if len(design) == 1:
+        if design in towels:
+            # print(f"{' ' * recursion_depth}Remaining design is a valid towellllll, so returning it.")
+            memo[design] = 1
+            return 1
+        else:
+            # print(f"{' ' * recursion_depth}Remaining design is not a valid towel - returning none.")
+            memo[design] = 0
+            return 0
 
-    while start <= end:
-        for temp_end in range(end, start - 1, -1):
-            print(f"{'  ' * recursion_level}{temp_end}")
-            design_subset = design[start:temp_end + 1]
-            if design_subset in towels:
-                if temp_end + 1 > end:
-                    # If the design is valid and we don't have any further design left to check, store this valid design.
-                    print(f"{'  ' * recursion_level}{design_subset} is valid and reached end, so storing this combo")
-                    valid_combinations.append(progress + [design_subset])
-                else:
-                    print(f"{'  ' * recursion_level}{design_subset} is valid - recursing with remaining design")
-                    if design_is_possible(towels, design[temp_end + 1:end + 1], progress + [design_subset], valid_combinations, memo, recursion_level + 1):
-                        print(f"{'  ' * recursion_level}Recursed design {design[temp_end + 1:end + 1]} was valid")
-                    else:
-                        print(f"{'  ' * recursion_level}Recursed design {design[temp_end + 1:end + 1]} was NOT valid")
-            else:
-                print(f"{'  ' * recursion_level}Design subset {design_subset} is not a valid towel")
+    viable_combinations = 0
+    segment_length = 1
+    while segment_length <= len(design):
+        segment = design[0:segment_length]
+        remainder = design[segment_length:]
+        if segment not in towels:
+            # print(f"{' ' * recursion_depth}Prefix {segment} is not valid. Continuing.")
+            segment_length += 1
+            continue
+        # print(f"{' ' * recursion_depth}Starting with valid prefix {segment} - recursing with {remainder}")
+        if remainder == '':
+            # print(f"{' ' * recursion_depth}No remaining design, so adding {segment} to results.")
+            viable_combinations += 1
+            segment_length += 1
+            continue
+        viable_combinations += get_possible_combinations(remainder, towels, memo, recursion_depth + 1)
 
-            if temp_end == start:
-                # If the remaining design wasn't possible and there's only one stripe left, the design is not possible.
-                print(f"{'  ' * recursion_level}Reached the end")
-                memo[memo_key] = False
-                return False
-
-    memo[memo_key] = True
-    return True
+        segment_length += 1
+    memo[design] = viable_combinations
+    return viable_combinations
 
 
 with open(os.path.join(os.path.dirname(__file__), "input.txt")) as f:
@@ -58,12 +60,12 @@ for line in lines:
     else:
         towels = set(stripped_line.split(', '))
 
-possible_designs = []
-valid_combinations = []
+valid_combinations = 0
 memo = {}
+design_index = 0
 for design in designs:
-    if design_is_possible(towels, design, [], valid_combinations, memo):
-        possible_designs.append(design)
+    print(f"Processing design {design} with index {design_index}")
+    valid_combinations += get_possible_combinations(design, towels, memo)
+    design_index += 1
 
-pprint(valid_combinations)
-print(len(valid_combinations))
+print(valid_combinations)

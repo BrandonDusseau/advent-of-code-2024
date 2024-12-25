@@ -1,4 +1,5 @@
 import os
+from collections import defaultdict
 from pprint import pprint
 
 
@@ -10,71 +11,70 @@ def is_point_in_region(plant, plots, row, col, max_row, max_col):
 
 def explore_region(discovered, plots, row, col, max_row, max_col):
     if (col, row) in discovered:
-        return (set(), set())
+        return (set(), {})
 
     discovered.add((col, row))
     adjacent_plots_in_region = []
-    walls = []
+    walls = defaultdict(list)
     plant = plots[row][col]
 
     points_to_test = [
-        ((col - 1, row), 'vert'),
-        ((col + 1, row), 'vert'),
-        ((col, row - 1), 'horiz'),
-        ((col, row + 1), 'horiz')
+        ((col - 1, row), 'e'),
+        ((col + 1, row), 'w'),
+        ((col, row - 1), 'n'),
+        ((col, row + 1), 's')
     ]
     for test_point, direction in points_to_test:
         test_col, test_row = test_point
         if is_point_in_region(plant, plots, test_row, test_col, max_row, max_col):
             adjacent_plots_in_region.append((test_col, test_row))
         else:
-            walls.append(((test_col, test_row), direction))
+            walls[direction].append((test_col, test_row))
 
     plots_in_region = {(col, row)}
     for plot_col, plot_row in adjacent_plots_in_region:
         (found_plots, found_walls) = explore_region(discovered, plots, plot_row, plot_col, max_row, max_col)
         plots_in_region = plots_in_region.union(found_plots)
-        walls += found_walls
+        for wall_direction, wall_points in found_walls.items():
+            walls[wall_direction] += wall_points
 
     return (plots_in_region, walls)
 
 
+def count_gaps(wall_dict):
+    sides = 0
+    for _, values in wall_dict.items():
+        sorted_values = sorted(values)
+        for i in range(1, len(sorted_values)):
+            if abs(sorted_values[i] - sorted_values[i - 1]) > 1:
+                sides += 1
+    return sides
+
+
 def count_sides(walls):
-    vert_corners = []
-    horiz_corners = []
-    wall_lookup = set(walls)
+    north_walls_by_row = defaultdict(list)
+    for wall in walls['n']:
+        north_walls_by_row[wall[1]].append(wall[0])
+    south_walls_by_row = defaultdict(list)
+    for wall in walls['s']:
+        south_walls_by_row[wall[1]].append(wall[0])
+    east_walls_by_col = defaultdict(list)
+    for wall in walls['e']:
+        east_walls_by_col[wall[0]].append(wall[1])
+    west_walls_by_col = defaultdict(list)
+    for wall in walls['w']:
+        west_walls_by_col[wall[0]].append(wall[1])
 
-    for current_point, direction in walls:
-        col, row = current_point
+    # The base number of sides is how many different rows (n/s) or cols (e/w) are represented.
+    sides = len(north_walls_by_row) + len(south_walls_by_row) + len(east_walls_by_col) + len(west_walls_by_col)
 
-        print(f"Processing point ({col}, {row}) - {direction} wall")
+    # Gaps in the given rows/cols add additional sides.
+    sides += count_gaps(north_walls_by_row)
+    sides += count_gaps(south_walls_by_row)
+    sides += count_gaps(east_walls_by_col)
+    sides += count_gaps(west_walls_by_col)
 
-        points_to_test = [
-            (col - 1, row),
-            (col + 1, row)
-        ]
-
-        if direction == 'vert':
-            points_to_test = [
-                (col, row - 1),
-                (col, row + 1)
-            ]
-
-        if (points_to_test[0], direction) not in wall_lookup:
-            print(f"  Adding point ({points_to_test[0][0]}, {points_to_test[0][1]})")
-            if direction == 'vert':
-                vert_corners.append(points_to_test[0])
-            else:
-                horiz_corners.append(points_to_test[0])
-
-        if (points_to_test[1], direction) not in wall_lookup:
-            print(f"  Adding point ({points_to_test[1][0]}, {points_to_test[1][1]})")
-            if direction == 'vert':
-                vert_corners.append(points_to_test[1])
-            else:
-                horiz_corners.append(points_to_test[1])
-
-    return max(len(vert_corners), len(horiz_corners))
+    return sides
 
 
 with open(os.path.join(os.path.dirname(__file__), "input.txt")) as f:
@@ -99,8 +99,6 @@ for row in range(0, len(plots)):
         region = explore_region(set(), plots, row, col, max_row, max_col)
         regions.append(region)
         points_assigned_regions = points_assigned_regions.union(region[0])
-
-pprint(regions)
 
 total_price = 0
 for region_data in regions:
